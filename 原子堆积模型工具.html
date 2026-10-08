@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>原子堆积模型绘制工具 · 光照与视角</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:#0e1015;color:#e8ecf4;overflow:hidden;
+  }
+  #app{display:flex;height:100vh;}
+
+  /* ============ 左侧面板 ============ */
+  #panel{
+    width:330px;flex:0 0 330px;background:#14171f;border-right:1px solid #232833;
+    overflow-y:auto;padding:16px 14px 60px;
+  }
+  #panel::-webkit-scrollbar{width:8px;}
+  #panel::-webkit-scrollbar-thumb{background:#252b38;border-radius:4px;}
+  #panel::-webkit-scrollbar-track{background:transparent;}
+
+  #panel h1{
+    font-size:14px;margin:0 0 16px;font-weight:600;letter-spacing:.6px;
+    display:flex;align-items:center;gap:9px;color:#eef2f9;
+  }
+  #panel h1::before{
+    content:'';width:9px;height:9px;border-radius:50%;
+    background:linear-gradient(135deg,#4C8DFF,#7EE0C0);
+    box-shadow:0 0 10px rgba(76,141,255,.7);
+  }
+
+  /* ---------- 模块卡片 ---------- */
+  .module{
+    margin-bottom:10px;background:#181c25;border:1px solid #232833;
+    border-radius:12px;overflow:hidden;transition:border-color .18s;
+  }
+  .module:hover{border-color:#2b3242;}
+  .module-head{
+    display:flex;align-items:center;gap:9px;
+    padding:11px 12px;cursor:pointer;user-select:none;
+    background:#1b202a;transition:background .15s;
+  }
+  .module-head:hover{background:#212734;}
+  .module-dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+  .module-title{
+    flex:1;font-size:12.5px;font-weight:600;color:#d5dded;
+    letter-spacing:.5px;
+  }
+  .module-sub{font-size:10.5px;color:#5d6779;letter-spacing:.3px;}
+  .module-chev{
+    font-size:9px;color:#6f7a8f;transition:transform .22s;
+  }
+  .module.collapsed .module-chev{transform:rotate(-90deg);}
+  .module-body{padding:12px 12px 13px;border-top:1px solid #202531;}
+  .module.collapsed .module-body{display:none;}
+
+  /* ---------- 通用控件 ---------- */
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12.5px;}
+  .row:last-child{margin-bottom:0;}
+  .row > span:first-child{width:66px;flex:0 0 66px;color:#9aa4b8;}
+  .row .val{
+    width:46px;flex:0 0 46px;text-align:right;color:#c9d3e6;
+    font-variant-numeric:tabular-nums;font-size:11.5px;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;flex:1;height:4px;
+    background:#2a3040;border-radius:2px;outline:none;min-width:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:#4C8DFF;cursor:pointer;border:2px solid #14171f;
+    box-shadow:0 0 0 1px #4C8DFF;transition:.12s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+  input[type=range]::-moz-range-thumb{
+    width:12px;height:12px;border-radius:50%;background:#4C8DFF;
+    cursor:pointer;border:2px solid #14171f;
+  }
+
+  select{
+    flex:1;background:#1c212c;border:1px solid #2a3040;color:#dbe3f0;
+    border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;
+    outline:none;cursor:pointer;min-width:0;
+  }
+  select:focus{border-color:#4C8DFF;}
+
+  input[type=color]{
+    width:42px;height:26px;padding:0;border:1px solid #2a3040;
+    border-radius:7px;background:#1c212c;cursor:pointer;flex:0 0 42px;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper{padding:3px;}
+  input[type=color]::-webkit-color-swatch{border:none;border-radius:4px;}
+
+  .swatches{display:flex;gap:5px;margin:9px 0 11px;flex-wrap:wrap;}
+  .swatches i{
+    width:20px;height:20px;border-radius:6px;display:block;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.13);
+    transition:.15s;cursor:default;
+  }
+  .swatches i:hover{transform:translateY(-2px);}
+
+  button.action{
+    width:100%;margin-top:8px;padding:9px;border-radius:9px;
+    border:1px solid #2a3040;background:#1c212c;color:#dbe3f0;
+    cursor:pointer;font-size:12.5px;font-family:inherit;transition:.15s;
+    font-weight:500;
+  }
+  button.action:hover{background:#242c3c;border-color:#3d4a63;color:#fff;}
+  button.action:active{transform:scale(.985);}
+  button.action.primary{
+    background:linear-gradient(135deg,#2f5fbf,#3f8ee0);
+    border-color:#3f8ee0;color:#fff;
+  }
+  button.action.primary:hover{
+    background:linear-gradient(135deg,#3a6fd6,#4f9df0);
+  }
+
+  .mini-label{
+    font-size:10px;text-transform:uppercase;letter-spacing:1.1px;
+    color:#6f7a8f;margin:10px 0 8px;font-weight:600;
+  }
+  .mini-label:first-child{margin-top:0;}
+
+  /* ---------- 视角按钮组 ---------- */
+  .view-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .view-btns button{
+    padding:8px 0;border-radius:8px;border:1px solid #2a3040;
+    background:#1c212c;color:#dbe3f0;cursor:pointer;font-size:12px;
+    font-family:inherit;transition:.15s;font-weight:500;
+  }
+  .view-btns button:hover{background:#242c3c;border-color:#3d4a63;color:#fff;}
+  .view-btns button.active{
+    background:#2d3b54;color:#cfe0ff;border-color:#4C8DFF;
+    box-shadow:0 0 0 1px #4C8DFF inset;
+  }
+
+  /* ---------- 颜色列表 ---------- */
+  .color-list{
+    max-height:180px;overflow-y:auto;background:#1a1e28;border-radius:9px;
+    padding:7px 8px;border:1px solid #242a36;
+  }
+  .color-list::-webkit-scrollbar{width:6px;}
+  .color-list::-webkit-scrollbar-thumb{background:#2b3242;border-radius:3px;}
+  .color-list::-webkit-scrollbar-track{background:transparent;}
+  .color-item{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+  .color-item:last-child{margin-bottom:0;}
+  .color-item span{
+    flex:1;font-size:11.5px;color:#9aa4b8;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .color-item .chip{
+    width:12px;height:12px;border-radius:3px;flex:0 0 12px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+  }
+  .color-item input[type=color]{width:38px;height:22px;flex:0 0 38px;}
+
+  .sub-note{font-size:11px;color:#5d6779;line-height:1.55;margin:6px 0 0;}
+
+  .check-row{
+    display:flex;align-items:center;gap:8px;font-size:12.5px;
+    color:#9aa4b8;cursor:pointer;user-select:none;margin-bottom:8px;
+  }
+  .check-row input{
+    -webkit-appearance:none;appearance:none;width:32px;height:18px;
+    background:#2a3040;border-radius:9px;position:relative;cursor:pointer;
+    transition:.18s;outline:none;flex:0 0 32px;margin:0;
+  }
+  .check-row input::after{
+    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+    border-radius:50%;background:#8892a4;transition:.18s;
+  }
+  .check-row input:checked{background:#2f5fbf;}
+  .check-row input:checked::after{left:16px;background:#fff;}
+
+  #countInfo{
+    font-size:11.5px;color:#6f7a8f;text-align:center;padding:12px 0 0;
+    line-height:1.6;
+  }
+  #countInfo b{color:#7EA8FF;font-weight:600;}
+
+  /* ============ 右侧舞台 ============ */
+  #stage{flex:1;position:relative;overflow:hidden;background:#ffffff;}
+  #viewport3d{position:absolute;inset:0;}
+  #viewport3d canvas{display:block;}
+
+  #hint{
+    position:absolute;left:14px;bottom:12px;font-size:11.5px;
+    color:#8b94a7;background:rgba(20,23,31,.75);padding:5px 11px;
+    border-radius:7px;pointer-events:none;backdrop-filter:blur(6px);
+    letter-spacing:.3px;
+  }
+  #matBadge{
+    position:absolute;right:14px;top:12px;font-size:11px;
+    color:#c9d3e6;background:rgba(20,23,31,.78);padding:5px 12px;
+    border-radius:20px;pointer-events:none;backdrop-filter:blur(6px);
+    letter-spacing:.4px;border:1px solid rgba(255,255,255,.08);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ================= 控制面板 ================= -->
+  <aside id="panel">
+    <h1>原子堆积模型</h1>
+
+    <!-- ============ 模块 1：几何形状 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#4C8DFF;box-shadow:0 0 8px #4C8DFF"></span>
+        <span class="module-title">几何形状</span>
+        <span class="module-sub" id="shapeBadge"></span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="row"><span>形状</span><select id="shapeSel"></select></div>
+        <div id="shapeParams"></div>
+      </div>
+    </section>
+
+    <!-- ============ 模块 2：原子与材质 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#7EE0C0;box-shadow:0 0 8px #7EE0C0"></span>
+        <span class="module-title">原子与材质</span>
+        <span class="module-sub" id="matBadgeInline"></span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="mini-label">原子尺寸</div>
+        <div class="row">
+          <span>球半径</span>
+          <input type="range" id="radius" min="0.15" max="2" step="0.05" value="0.5" />
+          <span class="val" id="radiusV">0.50</span>
+        </div>
+        <div class="row">
+          <span>间距</span>
+          <input type="range" id="spacing" min="0.8" max="2" step="0.02" value="1" />
+          <span class="val" id="spacingV">1.00</span>
+        </div>
+
+        <div class="mini-label" style="margin-top:14px">材质风格</div>
+        <div class="row"><span>材质</span><select id="matSel">
+          <option value="metal">金属</option>
+          <option value="plastic">塑料</option>
+          <option value="matte">哑光</option>
+          <option value="toon">手绘（黑边）</option>
+        </select></div>
+        <div class="sub-note" id="matDesc"></div>
+      </div>
+    </section>
+
+    <!-- ============ 模块 3：光照调节 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#FFD166;box-shadow:0 0 8px #FFD166"></span>
+        <span class="module-title">光照调节</span>
+        <span class="module-sub" id="lightBadge"></span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="mini-label">光源强度</div>
+        <div class="row">
+          <span>主光</span>
+          <input type="range" id="mainLight" min="0" max="5" step="0.05" value="2.4" />
+          <span class="val" id="mainLightV">2.40</span>
+        </div>
+        <div class="row">
+          <span>环境光</span>
+          <input type="range" id="ambientLight" min="0" max="2.5" step="0.05" value="0.55" />
+          <span class="val" id="ambientLightV">0.55</span>
+        </div>
+        <div class="row">
+          <span>半球光</span>
+          <input type="range" id="hemiLight" min="0" max="2.5" step="0.05" value="0.75" />
+          <span class="val" id="hemiLightV">0.75</span>
+        </div>
+
+        <div class="mini-label" style="margin-top:14px">主光方向</div>
+        <div class="row">
+          <span>水平角</span>
+          <input type="range" id="lightAzimuth" min="0" max="360" step="1" value="52" />
+          <span class="val" id="lightAzimuthV">52°</span>
+        </div>
+        <div class="row">
+          <span>垂直角</span>
+          <input type="range" id="lightElevation" min="-90" max="90" step="1" value="46" />
+          <span class="val" id="lightElevationV">46°</span>
+        </div>
+        <div class="sub-note">水平角 0° 指向 +X 轴，逆时针增大；垂直角为与水平面夹角。</div>
+        <button class="action" id="resetLight">恢复默认光照</button>
+      </div>
+    </section>
+
+    <!-- ============ 模块 4：视角与旋转 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#66D9EF;box-shadow:0 0 8px #66D9EF"></span>
+        <span class="module-title">视角与旋转</span>
+        <span class="module-sub" id="rotBadge"></span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="mini-label">固定视角</div>
+        <div class="view-btns" id="viewBtns">
+          <button data-view="x">沿 X 轴</button>
+          <button data-view="y">沿 Y 轴</button>
+          <button data-view="z">沿 Z 轴</button>
+          <button data-view="iso" class="active">等轴视角</button>
+        </div>
+
+        <div class="mini-label" style="margin-top:14px">模型绕轴旋转</div>
+        <div class="row">
+          <span>绕 X 轴</span>
+          <input type="range" id="rotX" min="-180" max="180" step="1" value="0" />
+          <span class="val" id="rotXV">0°</span>
+        </div>
+        <div class="row">
+          <span>绕 Y 轴</span>
+          <input type="range" id="rotY" min="-180" max="180" step="1" value="0" />
+          <span class="val" id="rotYV">0°</span>
+        </div>
+        <div class="row">
+          <span>绕 Z 轴</span>
+          <input type="range" id="rotZ" min="-180" max="180" step="1" value="0" />
+          <span class="val" id="rotZV">0°</span>
+        </div>
+        <button class="action" id="resetRot">重置旋转</button>
+        <div class="sub-note">滑块控制模型自身绕世界坐标轴旋转，可与相机拖拽叠加使用。</div>
+      </div>
+    </section>
+
+    <!-- ============ 模块 5：配色方案 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#FFB454;box-shadow:0 0 8px #FFB454"></span>
+        <span class="module-title">配色方案</span>
+        <span class="module-sub" id="schemeBadge"></span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="mini-label">色系风格</div>
+        <div class="row"><span>色系</span><select id="schemeSel"></select></div>
+        <div class="swatches" id="swatches"></div>
+
+        <div class="mini-label" style="margin-top:14px">着色方式</div>
+        <div class="row">
+          <span>模式</span>
+          <select id="colorModeSel">
+            <option value="layer">按层着色</option>
+            <option value="random">随机着色</option>
+            <option value="single">单色</option>
+          </select>
+        </div>
+
+        <div id="singleWrap" style="display:none">
+          <div class="row" style="margin-top:10px">
+            <span>颜色</span><input type="color" id="singleColor" value="#4C8DFF" />
+          </div>
+        </div>
+
+        <div id="layerWrap" style="display:none">
+          <div class="mini-label" style="margin-top:12px">各层颜色（逐层自定义）</div>
+          <div class="color-list" id="layerList"></div>
+          <button class="action" id="resetLayerColors">重置为当前色系</button>
+        </div>
+
+        <div id="randomWrap" style="display:none">
+          <div class="mini-label" style="margin-top:12px">随机参数</div>
+          <div class="row">
+            <span>随机密度</span>
+            <input type="range" id="randDensity" min="0" max="1" step="0.02" value="0.85" />
+            <span class="val" id="randDensityV">85%</span>
+          </div>
+          <div class="row">
+            <span>颜色种类</span>
+            <input type="range" id="randCount" min="1" max="8" step="1" value="6" />
+            <span class="val" id="randCountV">6</span>
+          </div>
+          <div class="mini-label" style="margin-top:12px">每种颜色（可自定义）</div>
+          <div class="color-list" id="randomColorList"></div>
+          <button class="action" id="resetRandomColors">重置为当前色系</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 模块 6：画布与导出 ============ -->
+    <section class="module">
+      <div class="module-head">
+        <span class="module-dot" style="background:#B983FF;box-shadow:0 0 8px #B983FF"></span>
+        <span class="module-title">画布与导出</span>
+        <span class="module-chev">▼</span>
+      </div>
+      <div class="module-body">
+        <div class="mini-label">视图</div>
+        <div class="row"><span>背景</span><input type="color" id="bgColor" value="#ffffff" /></div>
+
+        <div class="mini-label" style="margin-top:14px">导出设置</div>
+        <div class="row">
+          <span>分辨率</span>
+          <select id="exportScale">
+            <option value="1">1× 原始尺寸</option>
+            <option value="1.5">1.5×</option>
+            <option value="2" selected>2× 高清</option>
+            <option value="3">3×</option>
+            <option value="4">4× 超清</option>
+          </select>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="exportTransparent" />
+          <span>导出背景透明（PNG Alpha）</span>
+        </label>
+        <button class="action primary" id="exportBtn">导出 PNG 图片</button>
+      </div>
+    </section>
+
+    <div id="countInfo">原子数：<b>0</b></div>
+  </aside>
+
+  <!-- ================= 渲染舞台 ================= -->
+  <main id="stage">
+    <div id="viewport3d"></div>
+    <div id="hint">左键旋转 · 滚轮缩放 · 右键平移</div>
+    <div id="matBadge">材质：金属</div>
+  </main>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =========================================================
+   1. 配色方案
+   ========================================================= */
+const SCHEMES = {
+  classic: { name: '经典', colors: ['#E74C3C', '#3498DB', '#F1C40F', '#2ECC71', '#9B59B6', '#E67E22'] },
+  chinese: { name: '中国风', colors: ['#C3272B', '#1685A9', '#FFB61E', '#4A7C59', '#5B3A70', '#B35C6A', '#2E5C8A'] },
+  sci:     { name: 'SCI',   colors: ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7'] },
+  abao:    { name: '阿宝色', colors: ['#FF6B9D', '#FFA45B', '#FFE066', '#6BCB77', '#4D96FF', '#B983FF'] },
+  morandi: { name: '莫兰迪', colors: ['#B9ADA0', '#A3B5A0', '#C4A6A0', '#9FA8B5', '#C7B8A1', '#A8A29E', '#8E9AAF'] },
+  nature:  { name: 'Nature', colors: ['#E64B35', '#4DBBD5', '#00A087', '#3C5488', '#F39B7F', '#8491B4', '#91D1C2', '#DC0000'] }
+};
+
+/* =========================================================
+   2. 材质风格预设
+   ========================================================= */
+const MATERIALS = {
+  metal: {
+    name: '金属',
+    desc: '高反射、低粗糙度，呈现镜面金属光泽',
+    detail: [24, 16],
+    create: () => new THREE.MeshStandardMaterial({
+      metalness: 0.95, roughness: 0.16, envMapIntensity: 1.5
+    })
+  },
+  plastic: {
+    name: '塑料',
+    desc: '中等粗糙度、微弱高光，日常塑料质感',
+    detail: [22, 15],
+    create: () => new THREE.MeshStandardMaterial({
+      metalness: 0.04, roughness: 0.34, envMapIntensity: 0.7
+    })
+  },
+  matte: {
+    name: '哑光',
+    desc: '完全漫反射、无高光，适合论文插图与印刷',
+    detail: [22, 15],
+    create: () => new THREE.MeshStandardMaterial({
+      metalness: 0.0, roughness: 0.96, envMapIntensity: 0.28
+    })
+  },
+  toon: {
+    name: '手绘',
+    desc: '卡通分级着色，低面数球体 + 黑色描边，插画 / 手绘风',
+    detail: [14, 10],
+    create: () => new THREE.MeshToonMaterial({}),
+    outline: true
+  }
+};
+
+/* =========================================================
+   3. 形状定义
+   ========================================================= */
+const SHAPES = {
+  sphere: {
+    label: '球体',
+    params: [{ k: 'R', label: '半径', min: 1, max: 10, step: 0.5, def: 4 }]
+  },
+  box: {
+    label: '长方体',
+    params: [
+      { k: 'lx', label: 'X 长', min: 2, max: 16, step: 0.5, def: 8 },
+      { k: 'ly', label: 'Y 宽', min: 2, max: 16, step: 0.5, def: 8 },
+      { k: 'lz', label: 'Z 高', min: 2, max: 16, step: 0.5, def: 8 }
+    ]
+  },
+  octahedron: {
+    label: '八面体',
+    params: [{ k: 'R', label: '半对角', min: 2, max: 10, step: 0.5, def: 5 }]
+  },
+  frustum: {
+    label: '四棱台',
+    params: [
+      { k: 'bottom', label: '底边长', min: 2, max: 16, step: 0.5, def: 8 },
+      { k: 'top',    label: '顶边长', min: 0, max: 16, step: 0.5, def: 4 },
+      { k: 'h',      label: '高',     min: 2, max: 16, step: 0.5, def: 6 }
+    ]
+  },
+  cylinder: {
+    label: '圆柱',
+    params: [
+      { k: 'R', label: '半径', min: 1, max: 8, step: 0.5, def: 4 },
+      { k: 'h', label: '高',   min: 1, max: 16, step: 0.5, def: 6 }
+    ]
+  },
+  pyramid: {
+    label: '四棱锥',
+    params: [
+      { k: 'base', label: '底边长', min: 2, max: 16, step: 0.5, def: 8 },
+      { k: 'h',    label: '高',     min: 2, max: 16, step: 0.5, def: 6 }
+    ]
+  }
+};
+
+/* =========================================================
+   4. 全局状态
+   ========================================================= */
+const MAX_ATOMS = 20000;
+
+const state = {
+  shape: 'sphere',
+  shapeParams: {},
+  radius: 0.5,
+  spacingMult: 1.0,
+  material: 'metal',
+  scheme: 'sci',
+  colorMode: 'layer',
+  singleColor: '#4C8DFF',
+  randomDensity: 0.85,
+  randomCount: 6,
+  bg: '#ffffff',
+
+  // 光照
+  mainLightIntensity: 2.4,
+  ambientIntensity: 0.55,
+  hemiIntensity: 0.75,
+  lightAzimuth: 52,
+  lightElevation: 46,
+
+  // 旋转
+  rotX: 0,
+  rotY: 0,
+  rotZ: 0
+};
+
+for (const key in SHAPES) {
+  state.shapeParams[key] = {};
+  SHAPES[key].params.forEach(p => { state.shapeParams[key][p.k] = p.def; });
+}
+
+let layerColors = [];
+let randomColors = [];
+let lastLayerSig = '';
+
+/* =========================================================
+   5. 几何判定
+   ========================================================= */
+function shapeBounds(key, p) {
+  switch (key) {
+    case 'sphere':     return { min: [-p.R, -p.R, -p.R], max: [p.R, p.R, p.R] };
+    case 'octahedron': return { min: [-p.R, -p.R, -p.R], max: [p.R, p.R, p.R] };
+    case 'box':        return {
+      min: [-p.lx / 2, -p.ly / 2, -p.lz / 2],
+      max: [ p.lx / 2,  p.ly / 2,  p.lz / 2]
+    };
+    case 'frustum': {
+      const m = Math.max(p.bottom, p.top) / 2;
+      return { min: [-m, -m, 0], max: [m, m, p.h] };
+    }
+    case 'cylinder': return {
+      min: [-p.R, -p.R, -p.h / 2],
+      max: [ p.R,  p.R,  p.h / 2]
+    };
+    case 'pyramid': {
+      const m = p.base / 2;
+      return { min: [-m, -m, 0], max: [m, m, p.h] };
+    }
+  }
+}
+
+function insideShape(key, p, pt) {
+  const [x, y, z] = pt;
+  const E = 1e-9;
+  switch (key) {
+    case 'sphere':
+      return x * x + y * y + z * z <= p.R * p.R + E;
+    case 'octahedron':
+      return Math.abs(x) + Math.abs(y) + Math.abs(z) <= p.R + E;
+    case 'box':
+      return Math.abs(x) <= p.lx / 2 + E &&
+             Math.abs(y) <= p.ly / 2 + E &&
+             Math.abs(z) <= p.lz / 2 + E;
+    case 'frustum': {
+      if (z < -E || z > p.h + E) return false;
+      const t = p.h > 0 ? z / p.h : 0;
+      const w = (p.bottom + (p.top - p.bottom) * t) / 2;
+      return Math.abs(x) <= w + E && Math.abs(y) <= w + E;
+    }
+    case 'cylinder':
+      return x * x + y * y <= p.R * p.R + E && Math.abs(z) <= p.h / 2 + E;
+    case 'pyramid': {
+      if (z < -E || z > p.h + E) return false;
+      const t = p.h > 0 ? z / p.h : 0;
+      const w = p.base * (1 - t) / 2;
+      return Math.abs(x) <= w + E && Math.abs(y) <= w + E;
+    }
+  }
+  return false;
+}
+
+/* =========================================================
+   6. 生成原子点阵
+   ========================================================= */
+function generateAtoms() {
+  const a = 2 * state.radius * state.spacingMult;
+  const key = state.shape;
+  const p = state.shapeParams[key];
+  const b = shapeBounds(key, p);
+
+  const i0 = Math.floor(b.min[0] / a - 1e-6), i1 = Math.ceil(b.max[0] / a + 1e-6);
+  const j0 = Math.floor(b.min[1] / a - 1e-6), j1 = Math.ceil(b.max[1] / a + 1e-6);
+  const k0 = Math.floor(b.min[2] / a - 1e-6), k1 = Math.ceil(b.max[2] / a + 1e-6);
+
+  const pts = [];
+  let truncated = false;
+
+  outer:
+  for (let i = i0; i <= i1; i++) {
+    const x = i * a;
+    for (let j = j0; j <= j1; j++) {
+      const y = j * a;
+      for (let k = k0; k <= k1; k++) {
+        const z = k * a;
+        if (insideShape(key, p, [x, y, z])) {
+          pts.push([x, y, z]);
+          if (pts.length >= MAX_ATOMS) { truncated = true; break outer; }
+        }
+      }
+    }
+  }
+  if (pts.length === 0) pts.push([0, 0, 0]);
+
+  const cx = (b.min[0] + b.max[0]) / 2;
+  const cy = (b.min[1] + b.max[1]) / 2;
+  const cz = (b.min[2] + b.max[2]) / 2;
+  for (const pt of pts) { pt[0] -= cx; pt[1] -= cy; pt[2] -= cz; }
+
+  return { pts, a, truncated };
+}
+
+/* =========================================================
+   7. 颜色分配
+   ========================================================= */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function syncLayerColors(keys) {
+  const sig = keys.join('|');
+  if (sig === lastLayerSig) return;
+  lastLayerSig = sig;
+
+  const pal = SCHEMES[state.scheme].colors;
+  const next = new Array(keys.length);
+  for (let i = 0; i < keys.length; i++) {
+    next[i] = layerColors[i] !== undefined ? layerColors[i] : pal[i % pal.length];
+  }
+  layerColors = next;
+  renderLayerList(keys.length);
+}
+
+function renderLayerList(count) {
+  const list = document.getElementById('layerList');
+  list.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    list.appendChild(makeColorItem(
+      `第 ${i + 1} 层`,
+      layerColors[i],
+      v => {
+        layerColors[i] = v;
+        if (state.colorMode === 'layer') updateColorsOnly();
+      }
+    ));
+  }
+}
+
+function syncRandomColors(reset) {
+  const pal = SCHEMES[state.scheme].colors;
+  const cnt = Math.max(1, Math.min(state.randomCount, 8));
+  if (reset) randomColors = [];
+
+  const next = new Array(cnt);
+  for (let i = 0; i < cnt; i++) {
+    next[i] = randomColors[i] !== undefined ? randomColors[i] : pal[i % pal.length];
+  }
+  randomColors = next;
+  renderRandomList();
+}
+
+function renderRandomList() {
+  const list = document.getElementById('randomColorList');
+  list.innerHTML = '';
+  randomColors.forEach((c, i) => {
+    list.appendChild(makeColorItem(
+      `颜色 ${i + 1}`,
+      c,
+      v => {
+        randomColors[i] = v;
+        if (state.colorMode === 'random') updateColorsOnly();
+      }
+    ));
+  });
+}
+
+function makeColorItem(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'color-item';
+
+  const chip = document.createElement('i');
+  chip.className = 'chip';
+  chip.style.background = value;
+
+  const lab = document.createElement('span');
+  lab.textContent = label;
+
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = value;
+  inp.addEventListener('input', () => {
+    chip.style.background = inp.value;
+    onChange(inp.value);
+  });
+
+  row.appendChild(chip);
+  row.appendChild(lab);
+  row.appendChild(inp);
+  return row;
+}
+
+function assignColors(pts, a) {
+  const n = pts.length;
+  const pal = SCHEMES[state.scheme].colors;
+
+  if (state.colorMode === 'single') {
+    return new Array(n).fill(state.singleColor);
+  }
+
+  if (state.colorMode === 'random') {
+    if (randomColors.length === 0) syncRandomColors(false);
+    const cnt = randomColors.length;
+    const rnd = mulberry32(24680);
+    const d = state.randomDensity;
+    const out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      if (rnd() < d) {
+        out[i] = randomColors[(rnd() * cnt) | 0];
+      } else {
+        out[i] = randomColors[0];
+      }
+    }
+    return out;
+  }
+
+  const keyOf = z => Math.round(z / a);
+  const keys = [...new Set(pts.map(p => keyOf(p[2])))].sort((x, y) => x - y);
+  syncLayerColors(keys);
+
+  const map = new Map();
+  keys.forEach((k, i) => map.set(k, layerColors[i] || pal[i % pal.length]));
+  return pts.map(p => map.get(keyOf(p[2])));
+}
+
+/* =========================================================
+   8. Three.js 场景
+   ========================================================= */
+const viewport3d = document.getElementById('viewport3d');
+const stageEl = document.getElementById('stage');
+const matBadge = document.getElementById('matBadge');
+
+let renderer3d, scene, camera, controls;
+let rotGroup = null;              // 承载模型的旋转组
+let instMesh = null;              // 原子球
+let outlineMesh = null;           // 手绘轮廓
+let lastFitR = 0;
+let forceFit = true;
+
+// 光源引用
+let mainLight = null;
+let ambientLight = null;
+let hemiLight = null;
+
+/* --- 程序化环境贴图 --- */
+function makeEnvTexture(renderer) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0.00, '#ffffff');
+  g.addColorStop(0.42, '#d7dfec');
+  g.addColorStop(0.72, '#8d96a6');
+  g.addColorStop(1.00, '#4a505b');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 256);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath(); ctx.ellipse(120, 56, 78, 40, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(372, 84, 62, 32, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = 'rgba(30,34,42,0.55)';
+  ctx.fillRect(0, 208, 512, 48);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envMap = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose();
+  tex.dispose();
+  return envMap;
+}
+
+function init3D() {
+  renderer3d = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: true,
+    alpha: true
+  });
+  renderer3d.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer3d.setSize(stageEl.clientWidth || 800, stageEl.clientHeight || 600);
+  viewport3d.appendChild(renderer3d.domElement);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(state.bg);
+  scene.environment = makeEnvTexture(renderer3d);
+
+  // 模型旋转组
+  rotGroup = new THREE.Group();
+  scene.add(rotGroup);
+
+  camera = new THREE.PerspectiveCamera(
+    42,
+    (stageEl.clientWidth || 800) / (stageEl.clientHeight || 600),
+    0.1, 5000
+  );
+
+  controls = new OrbitControls(camera, renderer3d.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 0.9;
+  controls.zoomSpeed = 0.9;
+
+  // ---- 光照系统 ----
+  ambientLight = new THREE.AmbientLight(0xffffff, state.ambientIntensity);
+  scene.add(ambientLight);
+
+  hemiLight = new THREE.HemisphereLight(0xffffff, 0x606878, state.hemiIntensity);
+  hemiLight.position.set(0, 60, 0);
+  scene.add(hemiLight);
+
+  mainLight = new THREE.DirectionalLight(0xffffff, state.mainLightIntensity);
+  scene.add(mainLight);
+
+  // 辅助补光（固定方向，提供阴影侧细节）
+  const fill1 = new THREE.DirectionalLight(0xd8e4ff, 0.9);
+  fill1.position.set(-9, -6, -10);
+  scene.add(fill1);
+
+  const fill2 = new THREE.DirectionalLight(0xffffff, 0.45);
+  fill2.position.set(-7, 9, -5);
+  scene.add(fill2);
+
+  applyLighting();
+}
+
+/* --- 光照应用 --- */
+function applyLighting() {
+  if (!mainLight) return;
+
+  ambientLight.intensity = state.ambientIntensity;
+  hemiLight.intensity = state.hemiIntensity;
+  mainLight.intensity = state.mainLightIntensity;
+
+  const r = 20;
+  const phi = THREE.MathUtils.degToRad(state.lightAzimuth);
+  const theta = THREE.MathUtils.degToRad(state.lightElevation);
+
+  mainLight.position.set(
+    r * Math.cos(theta) * Math.cos(phi),
+    r * Math.sin(theta),
+    r * Math.cos(theta) * Math.sin(phi)
+  );
+
+  // 徽标
+  document.getElementById('lightBadge').textContent =
+    `主光 ${state.mainLightIntensity.toFixed(2)}`;
+}
+
+/* --- 模型旋转应用 --- */
+function applyRotation() {
+  if (!rotGroup) return;
+  rotGroup.rotation.set(
+    THREE.MathUtils.degToRad(state.rotX),
+    THREE.MathUtils.degToRad(state.rotY),
+    THREE.MathUtils.degToRad(state.rotZ)
+  );
+  document.getElementById('rotBadge').textContent =
+    `X${state.rotX}° Y${state.rotY}° Z${state.rotZ}°`;
+}
+
+/* --- 相机适配 --- */
+function fitCameraAlong(dirVec) {
+  const R = lastFitR || 12;
+  const vFov = camera.fov * Math.PI / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const distV = R / Math.tan(vFov / 2);
+  const distH = R / Math.tan(hFov / 2);
+  const dist = Math.max(distV, distH) * 1.18;
+
+  const dir = dirVec.clone().normalize();
+  camera.position.copy(dir.multiplyScalar(dist));
+
+  // Y 轴视角需要切换 up 向量，避免与视线共线
+  if (Math.abs(dir.y) > 0.99) {
+    camera.up.set(0, 0, 1);
+  } else {
+    camera.up.set(0, 1, 0);
+  }
+
+  camera.near = Math.max(dist * 0.004, 0.01);
+  camera.far = dist * 30;
+  camera.updateProjectionMatrix();
+
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+/* --- 网格销毁 --- */
+function disposeMesh() {
+  if (instMesh) {
+    rotGroup.remove(instMesh);
+    instMesh.geometry.dispose();
+    instMesh.material.dispose();
+    instMesh.dispose();
+    instMesh = null;
+  }
+  if (outlineMesh) {
+    rotGroup.remove(outlineMesh);
+    outlineMesh.geometry.dispose();
+    outlineMesh.material.dispose();
+    outlineMesh.dispose();
+    outlineMesh = null;
+  }
+}
+
+/* --- 构建 3D 实例 --- */
+function build3D(pts, colors) {
+  disposeMesh();
+  if (!pts.length) return;
+
+  const spec = MATERIALS[state.material];
+  const [segW, segH] = spec.detail;
+
+  const geo = new THREE.SphereGeometry(state.radius, segW, segH);
+  const mat = spec.create();
+
+  const mesh = new THREE.InstancedMesh(geo, mat, pts.length);
+  mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+  const m4 = new THREE.Matrix4();
+  const col = new THREE.Color();
+
+  for (let i = 0; i < pts.length; i++) {
+    m4.makeTranslation(pts[i][0], pts[i][1], pts[i][2]);
+    mesh.setMatrixAt(i, m4);
+    col.set(colors[i]);
+    mesh.setColorAt(i, col);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 1;
+
+  rotGroup.add(mesh);
+  instMesh = mesh;
+
+  /* ---------- 手绘材质：追加黑色描边 ---------- */
+  if (spec.outline) {
+    const outGeo = new THREE.SphereGeometry(state.radius * 1.09, segW, segH);
+    const outMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      side: THREE.BackSide,
+      depthWrite: true,
+      depthTest: true
+    });
+    const outMesh = new THREE.InstancedMesh(outGeo, outMat, pts.length);
+    outMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+    for (let i = 0; i < pts.length; i++) {
+      m4.makeTranslation(pts[i][0], pts[i][1], pts[i][2]);
+      outMesh.setMatrixAt(i, m4);
+    }
+    outMesh.instanceMatrix.needsUpdate = true;
+    outMesh.frustumCulled = false;
+    outMesh.renderOrder = 0;   // 先渲染轮廓，主球体覆盖其内侧
+
+    rotGroup.add(outMesh);
+    outlineMesh = outMesh;
+  }
+
+  /* ---------- 相机自适应 ---------- */
+  let maxR = 1;
+  for (const p of pts) maxR = Math.max(maxR, Math.hypot(p[0], p[1], p[2]));
+  maxR += state.radius;
+
+  if (forceFit || lastFitR === 0 ||
+      Math.abs(maxR - lastFitR) / Math.max(lastFitR, 1e-6) > 0.22) {
+    lastFitR = maxR;
+    forceFit = false;
+    fitCameraAlong(new THREE.Vector3(1, 0.72, 1.28));
+  }
+}
+
+/* =========================================================
+   9. 渲染调度
+   ========================================================= */
+let current = { pts: [], colors: [], a: 1 };
+
+function rebuild() {
+  const { pts, a, truncated } = generateAtoms();
+  const colors = assignColors(pts, a);
+  current = { pts, colors, a };
+
+  document.getElementById('countInfo').innerHTML =
+    `原子数：<b>${pts.length}</b>${truncated ? ' <span style="color:#E8A33D">(已达上限)</span>' : ''}`;
+
+  build3D(pts, colors);
+}
+
+function updateColorsOnly() {
+  if (!current.pts.length || !instMesh) return;
+  const colors = assignColors(current.pts, current.a);
+  current.colors = colors;
+
+  const col = new THREE.Color();
+  for (let i = 0; i < colors.length; i++) {
+    col.set(colors[i]);
+    instMesh.setColorAt(i, col);
+  }
+  if (instMesh.instanceColor) instMesh.instanceColor.needsUpdate = true;
+}
+
+function onResize() {
+  const W = stageEl.clientWidth || 800;
+  const H = stageEl.clientHeight || 600;
+  if (!renderer3d) return;
+  renderer3d.setSize(W, H);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+}
+
+/* =========================================================
+   10. 导出 PNG
+   ========================================================= */
+function exportPNG() {
+  const scale = parseFloat(document.getElementById('exportScale').value) || 1;
+  const transparent = document.getElementById('exportTransparent').checked;
+
+  const W = Math.max(16, Math.round((stageEl.clientWidth || 800) * scale));
+  const H = Math.max(16, Math.round((stageEl.clientHeight || 600) * scale));
+
+  const tmp = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: true,
+    alpha: true
+  });
+  tmp.setPixelRatio(1);
+  tmp.setSize(W, H);
+  tmp.setClearColor(0x000000, transparent ? 0 : 1);
+
+  const oldBg = scene.background;
+  const oldAspect = camera.aspect;
+
+  if (transparent) {
+    scene.background = null;
+    tmp.setClearAlpha(0);
+  } else {
+    scene.background = new THREE.Color(state.bg);
+  }
+
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+
+  tmp.render(scene, camera);
+  const url = tmp.domElement.toDataURL('image/png');
+
+  scene.background = oldBg;
+  camera.aspect = oldAspect;
+  camera.updateProjectionMatrix();
+
+  tmp.dispose();
+  if (tmp.forceContextLoss) tmp.forceContextLoss();
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `atomic-model-${scale}x-${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* =========================================================
+   11. 模块折叠
+   ========================================================= */
+document.querySelectorAll('.module-head').forEach(head => {
+  head.addEventListener('click', () => {
+    head.parentElement.classList.toggle('collapsed');
+  });
+});
+
+/* =========================================================
+   12. UI 构建与事件绑定
+   ========================================================= */
+
+/* --- 形状 --- */
+const shapeSel = document.getElementById('shapeSel');
+for (const key in SHAPES) {
+  const o = document.createElement('option');
+  o.value = key;
+  o.textContent = SHAPES[key].label;
+  shapeSel.appendChild(o);
+}
+shapeSel.value = state.shape;
+
+function refreshShapeBadge() {
+  document.getElementById('shapeBadge').textContent = SHAPES[state.shape].label;
+}
+refreshShapeBadge();
+
+shapeSel.addEventListener('change', () => {
+  state.shape = shapeSel.value;
+  refreshShapeBadge();
+  renderShapeParams();
+  forceFit = true;
+  rebuild();
+});
+
+function renderShapeParams() {
+  const cont = document.getElementById('shapeParams');
+  cont.innerHTML = '';
+  const spec = SHAPES[state.shape];
+  const p = state.shapeParams[state.shape];
+
+  spec.params.forEach(ps => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span>${ps.label}</span>
+      <input type="range" min="${ps.min}" max="${ps.max}" step="${ps.step}" value="${p[ps.k]}">
+      <span class="val">${Number(p[ps.k]).toFixed(1)}</span>`;
+
+    const inp = row.querySelector('input');
+    const val = row.querySelector('.val');
+
+    inp.addEventListener('input', () => {
+      p[ps.k] = parseFloat(inp.value);
+      val.textContent = p[ps.k].toFixed(1);
+      rebuild();
+    });
+
+    cont.appendChild(row);
+  });
+}
+
+/* --- 原子尺寸 --- */
+const radiusEl = document.getElementById('radius');
+const radiusV = document.getElementById('radiusV');
+radiusEl.addEventListener('input', () => {
+  state.radius = parseFloat(radiusEl.value);
+  radiusV.textContent = state.radius.toFixed(2);
+  rebuild();
+});
+
+const spacingEl = document.getElementById('spacing');
+const spacingV = document.getElementById('spacingV');
+spacingEl.addEventListener('input', () => {
+  state.spacingMult = parseFloat(spacingEl.value);
+  spacingV.textContent = state.spacingMult.toFixed(2);
+  rebuild();
+});
+
+/* --- 材质 --- */
+const matSel = document.getElementById('matSel');
+const matDesc = document.getElementById('matDesc');
+matSel.value = state.material;
+
+function refreshMatDesc() {
+  const m = MATERIALS[state.material];
+  matDesc.textContent = m.desc;
+  matBadge.textContent = `材质：${m.name}`;
+  document.getElementById('matBadgeInline').textContent = m.name;
+}
+refreshMatDesc();
+
+matSel.addEventListener('change', () => {
+  state.material = matSel.value;
+  refreshMatDesc();
+  rebuild();
+});
+
+/* --- 光照 --- */
+const mainLightEl = document.getElementById('mainLight');
+const mainLightV = document.getElementById('mainLightV');
+mainLightEl.addEventListener('input', () => {
+  state.mainLightIntensity = parseFloat(mainLightEl.value);
+  mainLightV.textContent = state.mainLightIntensity.toFixed(2);
+  applyLighting();
+});
+
+const ambientEl = document.getElementById('ambientLight');
+const ambientV = document.getElementById('ambientLightV');
+ambientEl.addEventListener('input', () => {
+  state.ambientIntensity = parseFloat(ambientEl.value);
+  ambientV.textContent = state.ambientIntensity.toFixed(2);
+  applyLighting();
+});
+
+const hemiEl = document.getElementById('hemiLight');
+const hemiV = document.getElementById('hemiLightV');
+hemiEl.addEventListener('input', () => {
+  state.hemiIntensity = parseFloat(hemiEl.value);
+  hemiV.textContent = state.hemiIntensity.toFixed(2);
+  applyLighting();
+});
+
+const azEl = document.getElementById('lightAzimuth');
+const azV = document.getElementById('lightAzimuthV');
+azEl.addEventListener('input', () => {
+  state.lightAzimuth = parseInt(azEl.value, 10);
+  azV.textContent = state.lightAzimuth + '°';
+  applyLighting();
+});
+
+const elEl = document.getElementById('lightElevation');
+const elV = document.getElementById('lightElevationV');
+elEl.addEventListener('input', () => {
+  state.lightElevation = parseInt(elEl.value, 10);
+  elV.textContent = state.lightElevation + '°';
+  applyLighting();
+});
+
+document.getElementById('resetLight').addEventListener('click', () => {
+  state.mainLightIntensity = 2.4;
+  state.ambientIntensity = 0.55;
+  state.hemiIntensity = 0.75;
+  state.lightAzimuth = 52;
+  state.lightElevation = 46;
+
+  mainLightEl.value = 2.4;      mainLightV.textContent = '2.40';
+  ambientEl.value = 0.55;       ambientV.textContent = '0.55';
+  hemiEl.value = 0.75;          hemiV.textContent = '0.75';
+  azEl.value = 52;              azV.textContent = '52°';
+  elEl.value = 46;              elV.textContent = '46°';
+
+  applyLighting();
+});
+
+/* --- 视角与旋转 --- */
+const rotXEl = document.getElementById('rotX');
+const rotXV = document.getElementById('rotXV');
+rotXEl.addEventListener('input', () => {
+  state.rotX = parseInt(rotXEl.value, 10);
+  rotXV.textContent = state.rotX + '°';
+  applyRotation();
+});
+
+const rotYEl = document.getElementById('rotY');
+const rotYV = document.getElementById('rotYV');
+rotYEl.addEventListener('input', () => {
+  state.rotY = parseInt(rotYEl.value, 10);
+  rotYV.textContent = state.rotY + '°';
+  applyRotation();
+});
+
+const rotZEl = document.getElementById('rotZ');
+const rotZV = document.getElementById('rotZV');
+rotZEl.addEventListener('input', () => {
+  state.rotZ = parseInt(rotZEl.value, 10);
+  rotZV.textContent = state.rotZ + '°';
+  applyRotation();
+});
+
+document.getElementById('resetRot').addEventListener('click', () => {
+  state.rotX = 0; state.rotY = 0; state.rotZ = 0;
+  rotXEl.value = 0; rotXV.textContent = '0°';
+  rotYEl.value = 0; rotYV.textContent = '0°';
+  rotZEl.value = 0; rotZV.textContent = '0°';
+  applyRotation();
+});
+
+/* 固定视角按钮 */
+document.querySelectorAll('#viewBtns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#viewBtns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const v = btn.dataset.view;
+    // 固定视角时同步重置模型旋转，确保轴向对正
+    state.rotX = 0; state.rotY = 0; state.rotZ = 0;
+    rotXEl.value = 0; rotXV.textContent = '0°';
+    rotYEl.value = 0; rotYV.textContent = '0°';
+    rotZEl.value = 0; rotZV.textContent = '0°';
+    applyRotation();
+
+    if (v === 'x')      fitCameraAlong(new THREE.Vector3(1, 0, 0));
+    else if (v === 'y') fitCameraAlong(new THREE.Vector3(0, 1, 0));
+    else if (v === 'z') fitCameraAlong(new THREE.Vector3(0, 0, 1));
+    else                fitCameraAlong(new THREE.Vector3(1, 0.72, 1.28));
+  });
+});
+
+/* --- 色系 --- */
+const schemeSel = document.getElementById('schemeSel');
+for (const key in SCHEMES) {
+  const o = document.createElement('option');
+  o.value = key;
+  o.textContent = SCHEMES[key].name;
+  schemeSel.appendChild(o);
+}
+schemeSel.value = state.scheme;
+
+function refreshSchemeBadge() {
+  document.getElementById('schemeBadge').textContent = SCHEMES[state.scheme].name;
+}
+refreshSchemeBadge();
+
+function renderSwatches() {
+  const box = document.getElementById('swatches');
+  box.innerHTML = '';
+  SCHEMES[state.scheme].colors.forEach(c => {
+    const i = document.createElement('i');
+    i.style.background = c;
+    i.title = c;
+    box.appendChild(i);
+  });
+}
+renderSwatches();
+
+schemeSel.addEventListener('change', () => {
+  state.scheme = schemeSel.value;
+  refreshSchemeBadge();
+  renderSwatches();
+
+  layerColors = [];
+  lastLayerSig = '';
+  syncRandomColors(true);
+
+  rebuild();
+});
+
+/* --- 着色模式 --- */
+const colorModeSel = document.getElementById('colorModeSel');
+const singleWrap = document.getElementById('singleWrap');
+const layerWrap = document.getElementById('layerWrap');
+const randomWrap = document.getElementById('randomWrap');
+colorModeSel.value = state.colorMode;
+
+function refreshColorModeUI() {
+  singleWrap.style.display = state.colorMode === 'single' ? 'block' : 'none';
+  layerWrap.style.display = state.colorMode === 'layer' ? 'block' : 'none';
+  randomWrap.style.display = state.colorMode === 'random' ? 'block' : 'none';
+}
+refreshColorModeUI();
+
+colorModeSel.addEventListener('change', () => {
+  state.colorMode = colorModeSel.value;
+  refreshColorModeUI();
+  if (state.colorMode === 'layer') lastLayerSig = '';
+  if (state.colorMode === 'random' && randomColors.length === 0) {
+    syncRandomColors(false);
+  }
+  rebuild();
+});
+
+/* --- 单色 --- */
+document.getElementById('singleColor').addEventListener('input', e => {
+  state.singleColor = e.target.value;
+  if (state.colorMode === 'single') updateColorsOnly();
+});
+
+/* --- 重置层颜色 --- */
+document.getElementById('resetLayerColors').addEventListener('click', () => {
+  const pal = SCHEMES[state.scheme].colors;
+  layerColors = layerColors.map((_, i) => pal[i % pal.length]);
+  renderLayerList(layerColors.length);
+  updateColorsOnly();
+});
+
+/* --- 随机参数 --- */
+const randDensityEl = document.getElementById('randDensity');
+const randDensityV = document.getElementById('randDensityV');
+randDensityEl.addEventListener('input', () => {
+  state.randomDensity = parseFloat(randDensityEl.value);
+  randDensityV.textContent = Math.round(state.randomDensity * 100) + '%';
+  if (state.colorMode === 'random') updateColorsOnly();
+});
+
+const randCountEl = document.getElementById('randCount');
+const randCountV = document.getElementById('randCountV');
+randCountEl.addEventListener('input', () => {
+  state.randomCount = parseInt(randCountEl.value, 10);
+  randCountV.textContent = state.randomCount;
+  syncRandomColors(false);
+  if (state.colorMode === 'random') updateColorsOnly();
+});
+
+document.getElementById('resetRandomColors').addEventListener('click', () => {
+  syncRandomColors(true);
+  if (state.colorMode === 'random') updateColorsOnly();
+});
+
+/* --- 背景色 --- */
+document.getElementById('bgColor').addEventListener('input', e => {
+  state.bg = e.target.value;
+  if (scene) scene.background = new THREE.Color(state.bg);
+});
+
+/* --- 导出 --- */
+document.getElementById('exportBtn').addEventListener('click', exportPNG);
+
+/* =========================================================
+   13. 启动
+   ========================================================= */
+syncRandomColors(false);
+renderShapeParams();
+init3D();
+applyRotation();
+onResize();
+rebuild();
+
+if (window.ResizeObserver) {
+  new ResizeObserver(() => onResize()).observe(stageEl);
+} else {
+  window.addEventListener('resize', onResize);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (renderer3d && scene && camera) {
+    controls.update();
+    renderer3d.render(scene, camera);
+  }
+}
+animate();
+</script>
+</body>
+</html>
